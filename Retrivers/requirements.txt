@@ -1,0 +1,8 @@
+!pip install "ibm-watsonx-ai==1.1.2" | tail -n 1
+!pip install "langchain==0.2.1" | tail -n 1
+!pip install "langchain-ibm==0.1.11" | tail -n 1
+!pip install "langchain-community==0.2.1" | tail -n 1
+!pip install "chromadb==0.4.24" | tail -n 1
+!pip install "pypdf==4.3.1" | tail -n 1
+!pip install "lark==1.1.9" | tail -n 1
+!pip install 'posthog<6.0.0' | tail -n 1
