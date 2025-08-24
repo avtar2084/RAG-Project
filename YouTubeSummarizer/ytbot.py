@@ -14,8 +14,6 @@ from langchain_community.vectorstores import FAISS  # For efficient vector stora
 from langchain.chains import LLMChain  # For creating chains of operations with LLMs
 from langchain.prompts import PromptTemplate  # For defining prompt templates
 
-from langchain import PromptTemplate
-
 
 # Function to extract video ID from a YouTube URL
 # This function uses a regular expression to find the video ID in the URL.
@@ -25,13 +23,12 @@ def get_video_id(url):
     match = re.search(pattern, url)
     return match.group(1) if match else None
 
-
 # Function to get the transcript of a YouTube video
 # This function uses the YouTubeTranscriptApi to fetch the transcript of a video.
 def get_transcript(url):
     # Extracts the video ID from the URL
     video_id = get_video_id(url)
-    
+
     # Create a YouTubeTranscriptApi() object
     ytt_api = YouTubeTranscriptApi()
     
@@ -53,7 +50,6 @@ def get_transcript(url):
     
     return transcript if transcript else None
 
-
 # Function to process the transcript into a readable format
 # This function formats the transcript entries into a string with text and start time.
 def process(transcript):
@@ -64,6 +60,7 @@ def process(transcript):
     for i in transcript:
         try:
             # Append the text and its start time to the output string
+            #txt += f"Text: {i['text']} Start: {i['start']}\n"
             txt += f"Text: {i.text} Start: {i.start}\n"
         except KeyError:
             # If there is an issue accessing 'text' or 'start', skip this entry
@@ -71,6 +68,7 @@ def process(transcript):
             
     # Return the processed transcript as a single string
     return txt
+
 
 # Function to chunk the processed transcript into smaller segments
 # This function uses RecursiveCharacterTextSplitter to divide the transcript into chunks.
@@ -85,9 +83,7 @@ def chunk_transcript(processed_transcript, chunk_size=200, chunk_overlap=20):
     chunks = text_splitter.split_text(processed_transcript)
     return chunks
 
-
 # Function to set up credentials and client for IBM WatsonX
-
 def setup_credentials():
     # Define the model ID for the WatsonX model being used
     model_id = "meta-llama/llama-3-2-3b-instruct"
@@ -103,6 +99,7 @@ def setup_credentials():
     
     # Return the model ID, credentials, client, and project ID for later use
     return model_id, credentials, client, project_id
+
 
 
 # Function to define parameters for the WatsonX model
@@ -126,6 +123,8 @@ def initialize_watsonx_llm(model_id, credentials, project_id, parameters):
         params=parameters                  # Pass the parameters for model behavior
     )
 
+
+
 #   Function to set up the embedding model for WatsonX
 #This function initializes the embedding model, which 
 # converts the textual data into numerical vectors
@@ -136,6 +135,7 @@ def setup_embedding_model(credentials, project_id):
         url=credentials["url"],                            # Retrieve the service URL from the provided credentials
         project_id=project_id                               # Set the project ID for accessing resources in the Watson environment
     )
+
 
 
 # Function to create a FAISS index from text chunks using the specified embedding model
@@ -150,6 +150,8 @@ def create_faiss_index(chunks, embedding_model):
     # Use the FAISS library to create an index from the provided text chunks
     return FAISS.from_texts(chunks, embedding_model)
 
+
+
 def perform_similarity_search(faiss_index, query, k=3):
     """
     Search for specific queries within the embedded transcript using the FAISS index.
@@ -163,9 +165,7 @@ def perform_similarity_search(faiss_index, query, k=3):
     results = faiss_index.similarity_search(query, k=k)
     return results
 
-
 # Function to create a PromptTemplate for summarizing a YouTube video transcript
-
 def create_summary_prompt():
     """
     Create a PromptTemplate for summarizing a YouTube video transcript.
@@ -197,6 +197,7 @@ def create_summary_prompt():
     return prompt
 
 
+
 def create_summary_chain(llm, prompt, verbose=True):
     """
     Create an LLMChain for generating summaries.
@@ -224,32 +225,36 @@ def retrieve(query, faiss_index, k=7):
     relevant_context = faiss_index.similarity_search(query, k=k)
     return relevant_context
 
-
 def create_qa_prompt_template():
     """
     Create a PromptTemplate for question answering based on video content.
-
     Returns:
         PromptTemplate: A PromptTemplate object configured for Q&A tasks.
     """
     
     # Define the template string
     qa_template = """
-    You are an expert assistant providing detailed answers based on the following video content.
+    <|begin_of_text|><|start_header_id|>system<|end_header_id|>
+    You are an expert assistant providing detailed and accurate answers based on the following video content. Your responses should be:
+    1. Precise and free from repetition
+    2. Consistent with the information provided in the video
+    3. Well-organized and easy to understand
+    4. Focused on addressing the user's question directly
+    If you encounter conflicting information in the video content, use your best judgment to provide the most likely correct answer based on context.
+    Note: In the transcript, "Text" refers to the spoken words in the video, and "start" indicates the timestamp when that part begins in the video.<|eot_id|>
 
+    <|start_header_id|>user<|end_header_id|>
     Relevant Video Context: {context}
-
     Based on the above context, please answer the following question:
-    Question: {question}
+    {question}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
     """
-
     # Create the PromptTemplate object
     prompt_template = PromptTemplate(
         input_variables=["context", "question"],
         template=qa_template
     )
-
     return prompt_template
+
 
 
 # Function workflow:
@@ -258,7 +263,6 @@ def create_qa_prompt_template():
 #     Creates an LLMChain that combines the model and the prompt.
 #     Sets the verbosity of the chain.
 #     Returns the configured LLMChain object.
-
 def create_qa_chain(llm, prompt_template, verbose=True):
     """
     Create an LLMChain for question answering.
@@ -283,8 +287,6 @@ def create_qa_chain(llm, prompt_template, verbose=True):
 #     Retrieves relevant context using the FAISS index based on the user's question.
 #     Uses the question-answering chain (LLMChain) to generate an answer based on the retrieved context and the user's question.
 #     Returns the generated answer.
-
-
 def generate_answer(question, faiss_index, qa_chain, k=7):
     """
     Retrieve relevant context and generate an answer based on user input.
@@ -310,7 +312,6 @@ def generate_answer(question, faiss_index, qa_chain, k=7):
     answer = qa_chain.predict(context=relevant_context, question=question)
 
     return answer
-
 
 # Function workflow:
 
@@ -364,9 +365,6 @@ def summarize_video(video_url):
         return summary
     else:
         return "No transcript available. Please fetch the transcript first."
-    
-
-
 
 
 def answer_question(video_url, user_question):
@@ -420,11 +418,16 @@ def answer_question(video_url, user_question):
         return answer
     else:
         return "Please provide a valid question and ensure the transcript has been fetched."
-    
+
 
 # Gradio interface setup for the YouTube summarizer bot
 # This interface allows users to input a YouTube video URL, fetch the transcript, summarize the
 with gr.Blocks() as interface:
+
+    gr.Markdown(
+        "<h2 style='text-align: center;'>YouTube Video Summarizer and Q&A</h2>"
+    )
+
     # Input field for YouTube URL
     video_url = gr.Textbox(label="YouTube Video URL", placeholder="Enter the YouTube Video URL")
     
